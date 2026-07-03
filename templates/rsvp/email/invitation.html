@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 8px; overflow: hidden; }
+    .header { background: #0d6efd; color: #fff; padding: 28px 32px; }
+    .header h1 { margin: 0; font-size: 24px; }
+    .body { padding: 28px 32px; color: #333; line-height: 1.6; }
+    .details { background: #f8f9fa; border-radius: 6px; padding: 16px 20px; margin: 20px 0; }
+    .details p { margin: 4px 0; }
+    .btn { display: inline-block; background: #0d6efd; color: #fff !important;
+           text-decoration: none; padding: 14px 28px; border-radius: 6px;
+           font-size: 16px; font-weight: bold; margin: 20px 0; }
+    .family-list { margin: 12px 0 0; padding-left: 20px; }
+    .footer { padding: 16px 32px; font-size: 12px; color: #888; border-top: 1px solid #eee; }
+    a { color: #0d6efd; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>You're Invited!</h1>
+    <p style="margin:8px 0 0;opacity:.9;">{{ invitation.event.name }}</p>
+  </div>
+  <div class="body">
+    <p>Hi <strong>{{ invitation.first_name }}</strong>,</p>
+    <p>You have been personally invited to join us at <strong>{{ invitation.event.name }}</strong>.</p>
+
+    <div class="details">
+      <p><strong>Date &amp; Time:</strong> {{ invitation.event.date|date:"F j, Y, g:i a" }}</p>
+      <p><strong>Location:</strong> {{ invitation.event.location }}</p>
+      {% if invitation.event.description %}
+      <p>{{ invitation.event.description }}</p>
+      {% endif %}
+      {% if invitation.event.rsvp_deadline %}
+      <p><strong>RSVP by:</strong> {{ invitation.event.rsvp_deadline|date:"F j, Y" }}</p>
+      {% endif %}
+    </div>
+
+    <p>Click the button below to RSVP — no account required:</p>
+    <a href="{{ rsvp_url }}" class="btn">RSVP Now</a>
+
+    {% if family_members %}
+    <p>We've already added the following guests under your name:</p>
+    <ul class="family-list">
+      {% for member in family_members %}<li>{{ member.full_name }}</li>{% endfor %}
+    </ul>
+    <p>You can confirm or update their menu choices when you RSVP.</p>
+    {% endif %}
+
+    <p>We hope to see you there!</p>
+  </div>
+  <div class="footer">
+    <p>If the button doesn't work, paste this link into your browser:</p>
+    <p><a href="{{ rsvp_url }}">{{ rsvp_url }}</a></p>
+  </div>
+</div>
+</body>
+</html>

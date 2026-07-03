@@ -1,0 +1,26 @@
+You're invited to {{ invitation.event.name }}!
+
+Hi {{ invitation.first_name }},
+
+You have been invited to {{ invitation.event.name }}.
+
+  Date:     {{ invitation.event.date|date:"F j, Y, g:i a" }}
+  Location: {{ invitation.event.location }}
+{% if invitation.event.description %}
+  {{ invitation.event.description }}
+{% endif %}
+{% if invitation.event.rsvp_deadline %}
+  Please RSVP by {{ invitation.event.rsvp_deadline|date:"F j, Y" }}.
+{% endif %}
+
+Click the link below to RSVP (no account needed):
+{{ rsvp_url }}
+
+{% if family_members %}
+We have already added the following guests under your name:
+{% for member in family_members %}  - {{ member.full_name }}
+{% endfor %}
+You can review and update their menu choices when you RSVP.
+{% endif %}
+
+We hope to see you there!

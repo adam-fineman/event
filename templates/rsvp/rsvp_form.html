@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}RSVP – {{ event.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <h2 class="mb-1">RSVP for {{ event.name }}</h2>
+    <p class="text-muted mb-4">
+      {{ event.date|date:"F j, Y, g:i a" }} &bull; {{ event.location }}
+    </p>
+
+    {% if existing_rsvp %}
+      <div class="alert alert-warning">You have already RSVP'd. Submitting this form will update your response.</div>
+    {% endif %}
+    {% if invitation %}
+      <div class="alert alert-info">
+        <strong>Personal invitation</strong> — your name and email are pre-filled.
+        This link is unique to you; please don't share it.
+      </div>
+    {% endif %}
+
+    <form method="post" id="rsvpForm">
+      {% csrf_token %}
+
+      {# ─── Primary Guest ─── #}
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white fw-semibold">Your Information</div>
+        <div class="card-body">
+          <div class="row g-3">
+            {% if show_personal_info_form %}
+              {# Editable form fields for new RSVPs #}
+              <div class="col-sm-6">
+                <label class="form-label">First Name *</label>
+                {{ rsvp_form.first_name }}
+                {% if rsvp_form.first_name.errors %}<div class="text-danger small">{{ rsvp_form.first_name.errors }}</div>{% endif %}
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label">Last Name *</label>
+                {{ rsvp_form.last_name }}
+                {% if rsvp_form.last_name.errors %}<div class="text-danger small">{{ rsvp_form.last_name.errors }}</div>{% endif %}
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label">Email *</label>
+                {{ rsvp_form.email }}
+                {% if rsvp_form.email.errors %}<div class="text-danger small">{{ rsvp_form.email.errors }}</div>{% endif %}
+              </div>
+            {% else %}
+              {# Display as plain text for edits and invitations #}
+              <div class="col-sm-6">
+                <label class="form-label text-muted">First Name</label>
+                <p class="mb-0">
+                  <strong>
+                    {% if existing_rsvp %}{{ existing_rsvp.first_name }}{% elif invitation %}{{ invitation.first_name }}{% endif %}
+                  </strong>
+                </p>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label text-muted">Last Name</label>
+                <p class="mb-0">
+                  <strong>
+                    {% if existing_rsvp %}{{ existing_rsvp.last_name }}{% elif invitation %}{{ invitation.last_name }}{% endif %}
+                  </strong>
+                </p>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label text-muted">Email</label>
+                <p class="mb-0">
+                  <strong>
+                    {% if existing_rsvp %}{{ existing_rsvp.email }}{% elif invitation %}{{ invitation.email }}{% endif %}
+                  </strong>
+                </p>
+              </div>
+            {% endif %}
+            <div class="col-sm-6">
+              <label class="form-label">Phone</label>
+              {{ rsvp_form.phone }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Will you attend? *</label>
+              {{ rsvp_form.attending }}
+              {% if rsvp_form.attending.errors %}<div class="text-danger small">{{ rsvp_form.attending.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Dietary Notes</label>
+              {{ rsvp_form.dietary_notes }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# ─── Primary Guest Menu ─── #}
+      {% if has_menu and primary_menu_form %}
+      <div id="primaryMenuSection" class="card mb-4">
+        <div class="card-header bg-primary text-white fw-semibold">Your Menu Choices</div>
+        <div class="card-body">
+          {% for field in primary_menu_form %}
+          <div class="menu-section mb-3">
+            <h6>{{ field.label }}</h6>
+            {% for choice in field %}
+              <div class="form-check">
+                {{ choice.tag }}
+                <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+              </div>
+            {% endfor %}
+            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {# ─── Family Members (Read-Only) ─── #}
+      <div class="card mb-4">
+        <div class="card-header bg-secondary text-white fw-semibold">Guests</div>
+        <div class="card-body">
+          {% if family_with_menus %}{# Convert to list to check if empty #}
+            {% for member, menu_form in family_with_menus %}
+            <div class="card family-member-card mb-3">
+              <div class="card-body">
+                <strong>{{ member.full_name }}</strong>
+                {% if member.dietary_notes %}
+                  <div class="text-muted small mt-1">{{ member.dietary_notes }}</div>
+                {% endif %}
+
+                {# Family member menu choices #}
+                {% if has_menu and menu_form %}
+                <div class="mt-3 family-menu-section">
+                  <h6 class="text-secondary">Menu Choices</h6>
+                  {% for field in menu_form %}
+                  <div class="menu-section mb-2">
+                    <h6>{{ field.label }}</h6>
+                    {% for choice in field %}
+                      <div class="form-check">
+                        {{ choice.tag }}
+                        <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+                      </div>
+                    {% endfor %}
+                    {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
+                  </div>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted small">No additional guests.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="d-grid">
+        <button type="submit" class="btn btn-primary btn-lg">Submit RSVP</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // ── Attendance toggle: hide menus when not attending ──────────────────────
+  const attendingSelect = document.querySelector('[name="rsvp-attending"]');
+  const primaryMenuSection = document.getElementById('primaryMenuSection');
+
+  function toggleMenuVisibility() {
+    const attending = attendingSelect ? attendingSelect.value : 'yes';
+    const show = attending === 'yes';
+    if (primaryMenuSection) primaryMenuSection.style.display = show ? '' : 'none';
+    document.querySelectorAll('.family-menu-section').forEach(el => {
+      el.style.display = show ? '' : 'none';
+    });
+  }
+
+  if (attendingSelect) {
+    attendingSelect.addEventListener('change', toggleMenuVisibility);
+    toggleMenuVisibility();
+  }
+</script>
+{% endblock %}

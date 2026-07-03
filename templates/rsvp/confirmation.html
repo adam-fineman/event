@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}RSVP Confirmed – {{ rsvp.event.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7 text-center">
+    <div class="card py-5">
+      <div class="card-body">
+        <div class="display-1 mb-3">
+          {% if rsvp.attending == 'yes' %}🎉{% elif rsvp.attending == 'no' %}😢{% else %}🤔{% endif %}
+        </div>
+        <h2 class="card-title">Thank you, {{ rsvp.first_name }}!</h2>
+        <p class="lead text-muted">
+          {% if rsvp.attending == 'yes' %}
+            We look forward to seeing you at <strong>{{ rsvp.event.name }}</strong>.
+          {% elif rsvp.attending == 'no' %}
+            Sorry you can't make it to <strong>{{ rsvp.event.name }}</strong>. We'll miss you!
+          {% else %}
+            Thanks for letting us know you might attend <strong>{{ rsvp.event.name }}</strong>.
+          {% endif %}
+        </p>
+
+        <hr class="my-4">
+
+        <div class="text-start mx-auto" style="max-width:450px">
+          <h5>RSVP Summary</h5>
+          <table class="table table-sm">
+            <tr><th>Name</th><td>{{ rsvp.full_name }}</td></tr>
+            <tr><th>Email</th><td>{{ rsvp.email }}</td></tr>
+            <tr><th>Status</th><td>{{ rsvp.get_attending_display }}</td></tr>
+            <tr><th>Total Guests</th><td>{{ rsvp.total_guests }}</td></tr>
+          </table>
+
+          {% if rsvp.menu_selections.exists %}
+          <h6 class="mt-3">Your Menu Selections</h6>
+          <ul class="list-group list-group-flush mb-3">
+            {% for sel in rsvp.menu_selections.all %}
+              <li class="list-group-item ps-0">{{ sel.menu_item.category.name }}: {{ sel.menu_item.name }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+
+          {% if rsvp.family_members.exists %}
+          <h6 class="mt-3">Additional Guests</h6>
+          {% for member in rsvp.family_members.all %}
+          <div class="mb-2">
+            <strong>{{ member.full_name }}</strong>
+            {% if member.menu_selections.exists %}
+            <ul class="mb-0 ms-3 small">
+              {% for sel in member.menu_selections.all %}
+                <li>{{ sel.menu_item.category.name }}: {{ sel.menu_item.name }}</li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+          </div>
+          {% endfor %}
+          {% endif %}
+        </div>
+
+        <div class="mt-4 d-flex gap-2 justify-content-center">
+          {% if rsvp.invitation %}
+            <a href="{% url 'invited_rsvp' rsvp.invitation.token %}" class="btn btn-outline-primary">Edit RSVP</a>
+          {% else %}
+            <a href="{% url 'rsvp_form' rsvp.event.pk %}?email={{ rsvp.email }}" class="btn btn-outline-primary">Edit RSVP</a>
+          {% endif %}
+          <a href="{% url 'event_list' %}" class="btn btn-primary">Back to Events</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
