@@ -87,11 +87,19 @@ def rsvp_form(request, event_pk):
     else:
         rsvp_form_inst = RSVPForm(instance=existing_rsvp, prefix='rsvp',
                                   initial={'email': prefill_email} if prefill_email else {})
-        primary_menu_form = build_menu_form(event, 'menu_primary') if has_menu else None
-        family_menu_forms = [
-            build_menu_form(event, f'menu_family_{i}')
-            for i in range(len(existing_family_members))
-        ] if has_menu else []
+        
+        # Build menu forms with existing selections pre-populated
+        if has_menu:
+            primary_initial = _get_menu_initial(rsvp=existing_rsvp, categories=categories) if existing_rsvp else {}
+            primary_menu_form = build_menu_form(event, 'menu_primary', initial=primary_initial)
+            
+            family_menu_forms = []
+            for i, member in enumerate(existing_family_members):
+                family_initial = _get_menu_initial(family_member=member, categories=categories)
+                family_menu_forms.append(build_menu_form(event, f'menu_family_{i}', initial=family_initial))
+        else:
+            primary_menu_form = None
+            family_menu_forms = []
 
     context = {
         'event': event,
@@ -125,6 +133,36 @@ def _save_menu_selections(menu_form, categories, rsvp=None, family_member=None):
                 RSVPMenuSelection.objects.get_or_create(rsvp=rsvp, menu_item=item)
             elif family_member:
                 FamilyMemberMenuSelection.objects.get_or_create(family_member=family_member, menu_item=item)
+
+
+def _get_menu_initial(rsvp=None, family_member=None, categories=None):
+    """
+    Get existing menu selections as initial data for form building.
+    Returns dict like {f'category_{cat_id}': [item_id1, item_id2], ...}
+    """
+    if categories is None:
+        categories = []
+    
+    initial = {}
+    if rsvp:
+        for category in categories:
+            field_name = f'category_{category.pk}'
+            selections = rsvp.menu_selections.filter(
+                menu_item__category=category
+            ).values_list('menu_item__pk', flat=True)
+            if selections:
+                # ChoiceField/MultipleChoiceField expect string values
+                initial[field_name] = [str(pk) for pk in selections]
+    elif family_member:
+        for category in categories:
+            field_name = f'category_{category.pk}'
+            selections = family_member.menu_selections.filter(
+                menu_item__category=category
+            ).values_list('menu_item__pk', flat=True)
+            if selections:
+                initial[field_name] = [str(pk) for pk in selections]
+    
+    return initial
 
 
 def rsvp_confirmation(request, rsvp_pk):
@@ -180,6 +218,9 @@ def invited_rsvp(request, token):
             with transaction.atomic():
                 rsvp = form.save(commit=False)
                 rsvp.event = event
+                rsvp.first_name = invitation.first_name
+                rsvp.last_name = invitation.last_name
+                rsvp.email = invitation.email
                 rsvp.save()
 
                 rsvp.menu_selections.all().delete()
@@ -225,11 +266,18 @@ def invited_rsvp(request, token):
             initial=initial_rsvp,
         )
 
-        primary_menu_form = build_menu_form(event, 'menu_primary') if has_menu else None
-        family_menu_forms = [
-            build_menu_form(event, f'menu_family_{i}')
-            for i in range(len(family_members_to_show))
-        ] if has_menu else []
+        # Build menu forms with existing selections pre-populated
+        if has_menu:
+            primary_initial = _get_menu_initial(rsvp=existing_rsvp, categories=categories) if existing_rsvp else {}
+            primary_menu_form = build_menu_form(event, 'menu_primary', initial=primary_initial)
+            
+            family_menu_forms = []
+            for i, member in enumerate(family_members_to_show):
+                family_initial = _get_menu_initial(family_member=member, categories=categories)
+                family_menu_forms.append(build_menu_form(event, f'menu_family_{i}', initial=family_initial))
+        else:
+            primary_menu_form = None
+            family_menu_forms = []
 
     context = {
         'event': event,

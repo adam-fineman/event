@@ -50,7 +50,7 @@
                 <label class="form-label text-muted">First Name</label>
                 <p class="mb-0">
                   <strong>
-                    {% if existing_rsvp %}{{ existing_rsvp.first_name }}{% elif invitation %}{{ invitation.first_name }}{% endif %}
+                    {% if existing_rsvp.first_name %}{{ existing_rsvp.first_name }}{% else %}{{ invitation.first_name }}{% endif %}
                   </strong>
                 </p>
               </div>
@@ -58,7 +58,7 @@
                 <label class="form-label text-muted">Last Name</label>
                 <p class="mb-0">
                   <strong>
-                    {% if existing_rsvp %}{{ existing_rsvp.last_name }}{% elif invitation %}{{ invitation.last_name }}{% endif %}
+                    {% if existing_rsvp.last_name %}{{ existing_rsvp.last_name }}{% else %}{{ invitation.last_name }}{% endif %}
                   </strong>
                 </p>
               </div>
@@ -66,7 +66,7 @@
                 <label class="form-label text-muted">Email</label>
                 <p class="mb-0">
                   <strong>
-                    {% if existing_rsvp %}{{ existing_rsvp.email }}{% elif invitation %}{{ invitation.email }}{% endif %}
+                    {% if existing_rsvp.email %}{{ existing_rsvp.email }}{% else %}{{ invitation.email }}{% endif %}
                   </strong>
                 </p>
               </div>
