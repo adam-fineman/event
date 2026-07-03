@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.http import HttpResponseForbidden
 from django.db import transaction
 from django.core.serializers.json import DjangoJSONEncoder
 import json
@@ -11,23 +12,40 @@ from .models import (
 from .forms import RSVPForm, LockedEmailRSVPForm, build_menu_form
 
 
+INVITATION_AUTH_SESSION_KEY = 'invitation_authenticated'
+INVITATION_EMAIL_SESSION_KEY = 'invitation_email'
+
+
+def _session_invitation_email(request):
+    if not request.session.get(INVITATION_AUTH_SESSION_KEY):
+        return None
+    return request.session.get(INVITATION_EMAIL_SESSION_KEY)
+
+
 def event_list(request):
-    events = Event.objects.all().order_by('date')
+    invitation_email = _session_invitation_email(request)
+    if not invitation_email:
+        return HttpResponseForbidden("Forbidden")
+
+    events = Event.objects.filter(invitations__email__iexact=invitation_email).distinct().order_by('date')
     return render(request, 'rsvp/event_list.html', {'events': events})
 
 
 def rsvp_form(request, event_pk):
+    invitation_email = _session_invitation_email(request)
+    if not invitation_email:
+        return HttpResponseForbidden("Forbidden")
+
     event = get_object_or_404(Event, pk=event_pk)
+    invitation = Invitation.objects.filter(event=event, email__iexact=invitation_email).first()
+    if not invitation:
+        return HttpResponseForbidden("Forbidden")
 
     if not event.is_accepting_rsvps:
         messages.error(request, "The RSVP deadline for this event has passed.")
         return redirect('event_list')
 
-    # Try to pre-populate if the user has already RSVP'd (edit flow via email lookup)
-    existing_rsvp = None
-    prefill_email = request.GET.get('email', '')
-    if prefill_email:
-        existing_rsvp = RSVP.objects.filter(event=event, email=prefill_email).first()
+    existing_rsvp = invitation.rsvp or RSVP.objects.filter(event=event, email__iexact=invitation_email).first()
 
     categories = list(MenuCategory.objects.filter(event=event).prefetch_related('items'))
     has_menu = bool(categories)
@@ -39,7 +57,16 @@ def rsvp_form(request, event_pk):
         existing_family_members = list(existing_rsvp.family_members.all())
 
     if request.method == 'POST':
-        rsvp_form_inst = RSVPForm(request.POST, instance=existing_rsvp, prefix='rsvp')
+        rsvp_form_inst = LockedEmailRSVPForm(
+            request.POST,
+            instance=existing_rsvp,
+            prefix='rsvp',
+            initial={
+                'first_name': invitation.first_name,
+                'last_name': invitation.last_name,
+                'email': invitation.email,
+            },
+        )
 
         # Build menu forms for primary guest and each family member
         primary_menu_form = build_menu_form(event, 'menu_primary', data=request.POST) if has_menu else None
@@ -65,6 +92,10 @@ def rsvp_form(request, event_pk):
             with transaction.atomic():
                 rsvp = rsvp_form_inst.save(commit=False)
                 rsvp.event = event
+                rsvp.first_name = invitation.first_name
+                rsvp.last_name = invitation.last_name
+                # Always bind RSVP ownership to the authenticated invitation email.
+                rsvp.email = invitation_email
                 rsvp.save()
 
                 # Clear previous menu selections (but NOT family members—they're fixed)
@@ -85,8 +116,15 @@ def rsvp_form(request, event_pk):
             return redirect('rsvp_confirmation', rsvp_pk=rsvp.pk)
 
     else:
-        rsvp_form_inst = RSVPForm(instance=existing_rsvp, prefix='rsvp',
-                                  initial={'email': prefill_email} if prefill_email else {})
+        rsvp_form_inst = LockedEmailRSVPForm(
+            instance=existing_rsvp,
+            prefix='rsvp',
+            initial={
+                'first_name': invitation.first_name,
+                'last_name': invitation.last_name,
+                'email': invitation.email,
+            },
+        )
         
         # Build menu forms with existing selections pre-populated
         if has_menu:
@@ -103,6 +141,7 @@ def rsvp_form(request, event_pk):
 
     context = {
         'event': event,
+        'invitation': invitation,
         'rsvp_form': rsvp_form_inst,
         'family_with_menus': zip(existing_family_members, family_menu_forms),
         'primary_menu_form': primary_menu_form,
@@ -110,7 +149,7 @@ def rsvp_form(request, event_pk):
         'categories': categories,
         'existing_rsvp': existing_rsvp,
         'menu_categories_json': menu_cats_json,
-        'show_personal_info_form': not existing_rsvp,
+        'show_personal_info_form': False,
     }
     return render(request, 'rsvp/rsvp_form.html', context)
 
@@ -166,12 +205,22 @@ def _get_menu_initial(rsvp=None, family_member=None, categories=None):
 
 
 def rsvp_confirmation(request, rsvp_pk):
+    invitation_email = _session_invitation_email(request)
+    if not invitation_email:
+        return HttpResponseForbidden("Forbidden")
+
     rsvp = get_object_or_404(RSVP, pk=rsvp_pk)
+    if rsvp.email.lower() != invitation_email.lower():
+        return HttpResponseForbidden("Forbidden")
+
     return render(request, 'rsvp/confirmation.html', {'rsvp': rsvp})
 
 
 def invited_rsvp(request, token):
     invitation = get_object_or_404(Invitation, token=token)
+    request.session[INVITATION_AUTH_SESSION_KEY] = True
+    request.session[INVITATION_EMAIL_SESSION_KEY] = invitation.email
+
     event = invitation.event
 
     if not event.is_accepting_rsvps:
