@@ -62,11 +62,11 @@ def build_menu_form(event, person_prefix, data=None, initial=None):
         choices = []
         for item in items:
             description = item.description.strip()
-            veg_label = 'Yes' if item.is_vegetarian else 'No'
+            veg_label = ' (Vegitarian)' if item.is_vegetarian else ''
             if description:
-                label = f"{item.name} - {description} (Vegetarian: {veg_label})"
+                label = f"{item.name} - {description}{veg_label}"
             else:
-                label = f"{item.name} (Vegetarian: {veg_label})"
+                label = f"{item.name}{veg_label}"
             choices.append((item.pk, label))
         label = category.name
         if category.required:

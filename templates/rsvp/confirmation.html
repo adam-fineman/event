@@ -38,7 +38,7 @@
               <li class="list-group-item ps-0">
                 {{ sel.menu_item.category.name }}: {{ sel.menu_item.name }}
                 {% if sel.menu_item.description %} - {{ sel.menu_item.description }}{% endif %}
-                (Vegetarian: {% if sel.menu_item.is_vegetarian %}Yes{% else %}No{% endif %})
+                {% if sel.menu_item.is_vegetarian %} (Vegitarian){% endif %}
               </li>
             {% endfor %}
           </ul>
@@ -55,7 +55,7 @@
                 <li>
                   {{ sel.menu_item.category.name }}: {{ sel.menu_item.name }}
                   {% if sel.menu_item.description %} - {{ sel.menu_item.description }}{% endif %}
-                  (Vegetarian: {% if sel.menu_item.is_vegetarian %}Yes{% else %}No{% endif %})
+                  {% if sel.menu_item.is_vegetarian %} (Vegitarian){% endif %}
                 </li>
               {% endfor %}
             </ul>
