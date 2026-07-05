@@ -59,7 +59,15 @@ def build_menu_form(event, person_prefix, data=None, initial=None):
 
     for category in categories:
         items = category.items.all()
-        choices = [(item.pk, item.name) for item in items]
+        choices = []
+        for item in items:
+            description = item.description.strip()
+            veg_label = 'Yes' if item.is_vegetarian else 'No'
+            if description:
+                label = f"{item.name} - {description} (Vegetarian: {veg_label})"
+            else:
+                label = f"{item.name} (Vegetarian: {veg_label})"
+            choices.append((item.pk, label))
         label = category.name
         if category.required:
             fields[f'category_{category.pk}'] = forms.ChoiceField(

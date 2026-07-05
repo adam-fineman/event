@@ -87,3 +87,46 @@ class EventListAccessTests(TestCase):
         self.assertNotContains(response, 'name="rsvp-first_name"')
         self.assertNotContains(response, 'name="rsvp-last_name"')
         self.assertNotContains(response, 'name="rsvp-email"')
+
+
+class InvitationDeletionTests(TestCase):
+    def setUp(self):
+        self.event = Event.objects.create(
+            name='Test Event',
+            date=timezone.now() + timezone.timedelta(days=7),
+            location='Test Venue',
+        )
+
+    def _create_invitation_with_rsvp(self, email):
+        rsvp = RSVP.objects.create(
+            event=self.event,
+            first_name='Jordan',
+            last_name='Guest',
+            email=email,
+            attending='yes',
+        )
+        return Invitation.objects.create(
+            event=self.event,
+            token=uuid.uuid4(),
+            first_name='Jordan',
+            last_name='Guest',
+            email=email,
+            rsvp=rsvp,
+        )
+
+    def test_deleting_single_invitation_deletes_linked_rsvp(self):
+        invitation = self._create_invitation_with_rsvp('single@example.com')
+        rsvp_id = invitation.rsvp_id
+
+        invitation.delete()
+
+        self.assertFalse(RSVP.objects.filter(id=rsvp_id).exists())
+
+    def test_bulk_deleting_invitations_deletes_linked_rsvps(self):
+        first = self._create_invitation_with_rsvp('bulk1@example.com')
+        second = self._create_invitation_with_rsvp('bulk2@example.com')
+        rsvp_ids = [first.rsvp_id, second.rsvp_id]
+
+        Invitation.objects.filter(id__in=[first.id, second.id]).delete()
+
+        self.assertEqual(RSVP.objects.filter(id__in=rsvp_ids).count(), 0)

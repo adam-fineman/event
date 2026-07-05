@@ -35,7 +35,11 @@
           <h6 class="mt-3">Your Menu Selections</h6>
           <ul class="list-group list-group-flush mb-3">
             {% for sel in rsvp.menu_selections.all %}
-              <li class="list-group-item ps-0">{{ sel.menu_item.category.name }}: {{ sel.menu_item.name }}</li>
+              <li class="list-group-item ps-0">
+                {{ sel.menu_item.category.name }}: {{ sel.menu_item.name }}
+                {% if sel.menu_item.description %} - {{ sel.menu_item.description }}{% endif %}
+                (Vegetarian: {% if sel.menu_item.is_vegetarian %}Yes{% else %}No{% endif %})
+              </li>
             {% endfor %}
           </ul>
           {% endif %}
@@ -48,7 +52,11 @@
             {% if member.menu_selections.exists %}
             <ul class="mb-0 ms-3 small">
               {% for sel in member.menu_selections.all %}
-                <li>{{ sel.menu_item.category.name }}: {{ sel.menu_item.name }}</li>
+                <li>
+                  {{ sel.menu_item.category.name }}: {{ sel.menu_item.name }}
+                  {% if sel.menu_item.description %} - {{ sel.menu_item.description }}{% endif %}
+                  (Vegetarian: {% if sel.menu_item.is_vegetarian %}Yes{% else %}No{% endif %})
+                </li>
               {% endfor %}
             </ul>
             {% endif %}

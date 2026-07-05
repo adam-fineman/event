@@ -1,5 +1,7 @@
 import uuid
 from django.db import models
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 from django.urls import reverse
 from django.utils import timezone
 
@@ -166,3 +168,10 @@ class InvitedFamilyMember(models.Model):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+
+@receiver(pre_delete, sender=Invitation)
+def delete_linked_rsvp_on_invitation_delete(sender, instance, **kwargs):
+    """Ensure invitation deletion also removes its submitted RSVP."""
+    if instance.rsvp_id:
+        instance.rsvp.delete()
