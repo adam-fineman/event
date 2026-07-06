@@ -193,13 +193,14 @@ def _get_menu_initial(rsvp=None, family_member=None, categories=None):
                 # ChoiceField/MultipleChoiceField expect string values
                 initial[field_name] = [str(pk) for pk in selections]
     elif family_member:
-        for category in categories:
-            field_name = f'category_{category.pk}'
-            selections = family_member.menu_selections.filter(
-                menu_item__category=category
-            ).values_list('menu_item__pk', flat=True)
-            if selections:
-                initial[field_name] = [str(pk) for pk in selections]
+        if hasattr(family_member, 'menu_selections'):
+            for category in categories:
+                field_name = f'category_{category.pk}'
+                selections = family_member.menu_selections.filter(
+                    menu_item__category=category
+                ).values_list('menu_item__pk', flat=True)
+                if selections:
+                    initial[field_name] = [str(pk) for pk in selections]
     
     return initial
 
@@ -322,7 +323,10 @@ def invited_rsvp(request, token):
             
             family_menu_forms = []
             for i, member in enumerate(family_members_to_show):
-                family_initial = _get_menu_initial(family_member=member, categories=categories)
+                family_initial = _get_menu_initial(
+                    family_member=member,
+                    categories=categories,
+                ) if hasattr(member, 'menu_selections') else {}
                 family_menu_forms.append(build_menu_form(event, f'menu_family_{i}', initial=family_initial))
         else:
             primary_menu_form = None
