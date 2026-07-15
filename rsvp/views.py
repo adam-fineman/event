@@ -125,12 +125,12 @@ def rsvp_form(request, event_pk):
                 'email': invitation.email,
             },
         )
-        
+
         # Build menu forms with existing selections pre-populated
         if has_menu:
             primary_initial = _get_menu_initial(rsvp=existing_rsvp, categories=categories) if existing_rsvp else {}
             primary_menu_form = build_menu_form(event, 'menu_primary', initial=primary_initial)
-            
+
             family_menu_forms = []
             for i, member in enumerate(existing_family_members):
                 family_initial = _get_menu_initial(family_member=member, categories=categories)
@@ -181,7 +181,7 @@ def _get_menu_initial(rsvp=None, family_member=None, categories=None):
     """
     if categories is None:
         categories = []
-    
+
     initial = {}
     if rsvp:
         for category in categories:
@@ -201,7 +201,7 @@ def _get_menu_initial(rsvp=None, family_member=None, categories=None):
                 ).values_list('menu_item__pk', flat=True)
                 if selections:
                     initial[field_name] = [str(pk) for pk in selections]
-    
+
     return initial
 
 
@@ -320,7 +320,7 @@ def invited_rsvp(request, token):
         if has_menu:
             primary_initial = _get_menu_initial(rsvp=existing_rsvp, categories=categories) if existing_rsvp else {}
             primary_menu_form = build_menu_form(event, 'menu_primary', initial=primary_initial)
-            
+
             family_menu_forms = []
             for i, member in enumerate(family_members_to_show):
                 family_initial = _get_menu_initial(
