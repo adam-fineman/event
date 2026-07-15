@@ -1,5 +1,7 @@
 import uuid
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.urls import reverse
@@ -68,6 +70,9 @@ class RSVP(models.Model):
     phone = models.CharField(max_length=20, blank=True)
     attending = models.CharField(max_length=5, choices=ATTENDING_CHOICES, default='yes')
     dietary_notes = models.TextField(blank=True, help_text="Allergies or other dietary requirements")
+    table = models.ForeignKey(
+        'Table', null=True, blank=True, on_delete=models.SET_NULL, related_name='rsvps'
+    )
     submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -86,6 +91,11 @@ class RSVP(models.Model):
     def total_guests(self):
         return 1 + self.family_members.count()
 
+    def clean(self):
+        super().clean()
+        if self.table_id and self.event_id and self.table.event_id != self.event_id:
+            raise ValidationError({'table': 'Selected table must belong to the same event.'})
+
 
 class RSVPMenuSelection(models.Model):
     rsvp = models.ForeignKey(RSVP, on_delete=models.CASCADE, related_name='menu_selections')
@@ -103,6 +113,9 @@ class FamilyMember(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     dietary_notes = models.TextField(blank=True)
+    table = models.ForeignKey(
+        'Table', null=True, blank=True, on_delete=models.SET_NULL, related_name='family_members'
+    )
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} (guest of {self.rsvp.full_name})"
@@ -110,6 +123,11 @@ class FamilyMember(models.Model):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+    def clean(self):
+        super().clean()
+        if self.table_id and self.rsvp_id and self.table.event_id != self.rsvp.event_id:
+            raise ValidationError({'table': 'Selected table must belong to the same event as the RSVP.'})
 
 
 class FamilyMemberMenuSelection(models.Model):
@@ -121,6 +139,28 @@ class FamilyMemberMenuSelection(models.Model):
 
     def __str__(self):
         return f"{self.family_member.full_name} → {self.menu_item.name}"
+
+
+class Table(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='tables')
+    name = models.CharField(max_length=100, help_text='e.g. "Table 1" or "Head Table"')
+    capacity = models.PositiveIntegerField(null=True, blank=True, help_text='Leave blank for unlimited')
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.event.name})"
+
+    @property
+    def seat_count(self):
+        rsvp_seats = self.rsvps.filter(attending='yes').count()
+        family_seats = FamilyMember.objects.filter(
+            rsvp__attending='yes'
+        ).filter(
+            Q(table=self) | Q(table__isnull=True, rsvp__table=self)
+        ).count()
+        return rsvp_seats + family_seats
 
 
 class Invitation(models.Model):

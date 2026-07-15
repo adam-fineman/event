@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Placecards ({{ side|title }}) – {{ event.name }}</title>
+  <style>
+    /* ── Page setup for Avery 5371 ───────────────────────────────────────────
+       Sheet:  8.5" × 11"
+       Cards:  3.5" wide × 2.0" tall  (10 per sheet, 2 cols × 5 rows)
+       Margins: top 0.5", left 0.75", right 0.75"
+       Gutter: none
+    ──────────────────────────────────────────────────────────────────────── */
+    @page {
+      size: letter portrait;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Georgia, "Times New Roman", serif;
+      background: white;
+    }
+
+    .sheet {
+      width: 8.5in;
+      padding: 0.5in 0.75in 0in 0.75in;
+      display: flex;
+      flex-wrap: wrap;
+      page-break-after: always;
+    }
+
+    .sheet:last-child {
+      page-break-after: auto;
+    }
+
+    .card {
+      width: 3.5in;
+      height: 2in;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border: 0.5pt dashed #ccc;   /* cut guide – won't print dark */
+      padding: 0.15in;
+      overflow: hidden;
+    }
+
+    .card.blank {
+      border-color: transparent;
+    }
+
+    .card .guest-name {
+      font-size: 22pt;
+      font-weight: bold;
+      line-height: 1.2;
+      color: #1a1a1a;
+      word-break: break-word;
+    }
+
+    .card.back {
+      padding: 0.25in;
+    }
+
+    .card .back-table {
+      font-size: 16pt;
+      font-weight: bold;
+      color: #333;
+      text-align: center;
+    }
+
+    .card .back-menu {
+      margin-top: 0.12in;
+      font-size: 11pt;
+      line-height: 1.25;
+      color: #222;
+      text-align: center;
+      word-break: break-word;
+    }
+
+    /* Print: hide dashed guides if you want clean cards */
+    @media print {
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="no-print" style="padding:12px 20px; background:#f0f4ff; border-bottom:1px solid #c8d4f0; font-family:sans-serif;">
+    <strong>{{ event.name }} — Placecards (Avery 5371, {{ side|title }} side)</strong>
+    &nbsp;·&nbsp; {{ attendees|length }} card{{ attendees|length|pluralize }}
+    &nbsp;·&nbsp;
+    <button onclick="window.print()" style="padding:4px 14px; cursor:pointer;">🖨 Print</button>
+    &nbsp;
+    <a href="?side=front" style="font-size:0.9em;">Fronts</a>
+    &nbsp;|&nbsp;
+    <a href="?side=back" style="font-size:0.9em;">Backs</a>
+    &nbsp;
+    <a href="javascript:history.back()" style="font-size:0.9em;">← Back</a>
+  </div>
+
+  {% if sheets %}
+    {% for sheet in sheets %}
+      <div class="sheet">
+        {% if is_back %}
+          {% for attendee in sheet %}
+            <div class="card {% if not attendee %}blank{% endif %} back">
+              {% if attendee %}
+                {% if attendee.table %}
+                  <div class="back-table">Table {{ attendee.table }}</div>
+                {% endif %}
+                {% if attendee.menu_choice %}
+                  <div class="back-menu">{{ attendee.menu_choice }}</div>
+                {% endif %}
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          {% for attendee in sheet %}
+            <div class="card {% if not attendee %}blank{% endif %}">
+              {% if attendee %}
+                <div class="guest-name">{{ attendee.name }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <p style="padding:1in; font-family:sans-serif; color:#888;">
+      No confirmed attendees yet, or no RSVPs with attending = "yes".
+    </p>
+  {% endif %}
+
+</body>
+</html>

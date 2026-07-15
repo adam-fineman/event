@@ -7,7 +7,7 @@ import json
 
 from .models import (
     Event, RSVP, RSVPMenuSelection, FamilyMember, FamilyMemberMenuSelection,
-    MenuCategory, MenuItem, Invitation,
+    MenuCategory, MenuItem, Invitation, Table,
 )
 from .forms import RSVPForm, LockedEmailRSVPForm, build_menu_form
 
@@ -360,3 +360,79 @@ def _menu_categories_json(categories):
         ],
         cls=DjangoJSONEncoder,
     )
+
+
+def placecards(request, event_pk):
+    event = get_object_or_404(Event, pk=event_pk)
+    side = request.GET.get('side', 'front').lower()
+    if side not in ('front', 'back'):
+        side = 'front'
+    cards_per_sheet = 10
+    categories = list(MenuCategory.objects.filter(event=event).prefetch_related('items'))
+
+    # Build a flat list of attendee dicts and sort by last name for printing.
+    attendees = []
+    for rsvp in (
+        event.rsvps
+        .filter(attending='yes')
+        .select_related('table')
+        .prefetch_related('menu_selections__menu_item__category', 'family_members__table', 'family_members__menu_selections__menu_item__category')
+        .order_by('last_name', 'first_name')
+    ):
+        attendees.append({
+            'name': rsvp.full_name,
+            'table': rsvp.table.name if rsvp.table else '',
+            'menu_choice': _menu_choice_text(rsvp, categories=categories),
+            'last_name': rsvp.last_name,
+            'first_name': rsvp.first_name,
+        })
+        for member in rsvp.family_members.all().order_by('last_name', 'first_name'):
+            attendees.append({
+                'name': member.full_name,
+                'table': member.table.name if member.table else (rsvp.table.name if rsvp.table else ''),
+                'menu_choice': _menu_choice_text(member, categories=categories),
+                'last_name': member.last_name,
+                'first_name': member.first_name,
+            })
+
+    attendees.sort(key=lambda a: (a['last_name'].lower(), a['first_name'].lower()))
+
+    # Pad to full sheets so front/back print alignment remains consistent.
+    padded_attendees = list(attendees)
+    remainder = len(padded_attendees) % cards_per_sheet
+    if remainder:
+        padded_attendees.extend([None] * (cards_per_sheet - remainder))
+
+    sheets = [
+        padded_attendees[i:i + cards_per_sheet]
+        for i in range(0, len(padded_attendees), cards_per_sheet)
+    ]
+
+    return render(request, 'rsvp/placecards.html', {
+        'event': event,
+        'attendees': attendees,
+        'sheets': sheets,
+        'side': side,
+        'is_back': side == 'back',
+    })
+
+
+def _menu_choice_text(person, categories):
+    selections_by_category = {}
+    for selection in person.menu_selections.select_related('menu_item', 'menu_item__category').all():
+        category = selection.menu_item.category
+        selections_by_category.setdefault(category.pk, {
+            'category_name': category.name,
+            'items': [],
+        })['items'].append(selection.menu_item.name)
+
+    if not selections_by_category:
+        return ''
+
+    ordered_parts = []
+    for category in categories:
+        data = selections_by_category.get(category.pk)
+        if not data:
+            continue
+        ordered_parts.append(f"{data['category_name']}: {', '.join(data['items'])}")
+    return ' | '.join(ordered_parts)
