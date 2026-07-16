@@ -162,6 +162,11 @@ class RSVPAdmin(admin.ModelAdmin):
     readonly_fields = ['submitted_at', 'updated_at']
     inlines = [RSVPMenuSelectionInline, FamilyMemberInline]
 
+    def full_name(self, obj):
+        return obj.full_name
+    full_name.short_description = 'Name'
+    full_name.admin_order_field = 'last_name'
+
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == 'table':
             obj_id = request.resolver_match.kwargs.get('object_id') if request.resolver_match else None

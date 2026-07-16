@@ -1,10 +1,19 @@
 import uuid
 
+from django.contrib.admin.sites import AdminSite
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from .admin import RSVPAdmin
 from .models import Event, Invitation, RSVP
+
+
+class RSVPAdminTests(TestCase):
+    def test_rsvp_admin_full_name_is_configured_for_sorting(self):
+        admin = RSVPAdmin(RSVP, AdminSite())
+        self.assertEqual(admin.full_name.short_description, 'Name')
+        self.assertEqual(admin.full_name.admin_order_field, 'last_name')
 
 
 class EventListAccessTests(TestCase):
