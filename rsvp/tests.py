@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .admin import RSVPAdmin
-from .models import Event, Invitation, RSVP
+from .models import Event, Invitation, MenuCategory, MenuItem, RSVP, RSVPMenuSelection
 
 
 class RSVPAdminTests(TestCase):
@@ -139,3 +139,56 @@ class InvitationDeletionTests(TestCase):
         Invitation.objects.filter(id__in=[first.id, second.id]).delete()
 
         self.assertEqual(RSVP.objects.filter(id__in=rsvp_ids).count(), 0)
+
+
+class PlacecardsTests(TestCase):
+    def setUp(self):
+        self.event = Event.objects.create(
+            name='Test Event',
+            date=timezone.now() + timezone.timedelta(days=7),
+            location='Test Venue',
+        )
+        self.entrée_category = MenuCategory.objects.create(
+            event=self.event,
+            name='Entrée',
+            required=True,
+            order=1,
+        )
+        self.chicken = MenuItem.objects.create(
+            category=self.entrée_category,
+            name='Grilled Chicken',
+            order=1,
+        )
+        self.salmon = MenuItem.objects.create(
+            category=self.entrée_category,
+            name='Grilled Salmon',
+            order=2,
+        )
+
+    def test_back_side_placecards_rows_are_mirrored_for_print_alignment(self):
+        barnett = RSVP.objects.create(
+            event=self.event,
+            first_name='Barnett',
+            last_name='Davis',
+            email='barnett@example.com',
+            attending='yes',
+        )
+        netta = RSVP.objects.create(
+            event=self.event,
+            first_name='Netta',
+            last_name='Davis',
+            email='netta@example.com',
+            attending='yes',
+        )
+
+        RSVPMenuSelection.objects.create(rsvp=barnett, menu_item=self.chicken)
+        RSVPMenuSelection.objects.create(rsvp=netta, menu_item=self.salmon)
+
+        response = self.client.get(
+            reverse('placecards', kwargs={'event_pk': self.event.pk}) + '?side=back'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['sheets'][0][0]['name'], 'Netta Davis')
+        self.assertEqual(response.context['sheets'][0][0]['menu_choice'], 'Entrée: Grilled Salmon')
+        self.assertEqual(response.context['sheets'][0][1]['name'], 'Barnett Davis')
+        self.assertEqual(response.context['sheets'][0][1]['menu_choice'], 'Entrée: Grilled Chicken')

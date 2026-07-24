@@ -408,6 +408,9 @@ def placecards(request, event_pk):
         for i in range(0, len(padded_attendees), cards_per_sheet)
     ]
 
+    if side == 'back':
+        sheets = [_mirror_sheet_for_back(sheet) for sheet in sheets]
+
     return render(request, 'rsvp/placecards.html', {
         'event': event,
         'attendees': attendees,
@@ -415,6 +418,14 @@ def placecards(request, event_pk):
         'side': side,
         'is_back': side == 'back',
     })
+
+
+def _mirror_sheet_for_back(sheet, cards_per_row=2):
+    mirrored = []
+    for i in range(0, len(sheet), cards_per_row):
+        row = sheet[i:i + cards_per_row]
+        mirrored.extend(reversed(row))
+    return mirrored
 
 
 def _menu_choice_text(person, categories):
